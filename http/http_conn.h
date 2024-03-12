@@ -116,11 +116,11 @@ public:
 private:
     int m_sockfd;
     sockaddr_in m_address;
-    char m_read_buf[READ_BUFFER_SIZE];
+    char m_read_buf[READ_BUFFER_SIZE];//读缓冲区
     long m_read_idx;
     long m_checked_idx;
     int m_start_line;
-    char m_write_buf[WRITE_BUFFER_SIZE];
+    char m_write_buf[WRITE_BUFFER_SIZE];//写缓冲区
     int m_write_idx;
     CHECK_STATE m_check_state;
     METHOD m_method;

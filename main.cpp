@@ -5,8 +5,7 @@ int main(int argc, char *argv[])
     //需要修改的数据库信息,登录名,密码,库名
     string user = "root";
     string passwd = "root";
-    string databasename = "qgydb";
-
+    string databasename = "webserver";
     //命令行解析
     Config config;
     config.parse_arg(argc, argv);
@@ -28,7 +27,7 @@ int main(int argc, char *argv[])
     //线程池
     server.thread_pool();
 
-    //触发模式
+    //设置监听socket和连接socket的触发模式
     server.trig_mode();
 
     //监听

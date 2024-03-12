@@ -28,6 +28,7 @@ void sort_timer_lst::add_timer(util_timer *timer)
         head = tail = timer;
         return;
     }
+    //如果当前超时事件比链表内最小超时时间还小，直接插入头节点
     if (timer->expire < head->expire)
     {
         timer->next = head;
@@ -35,28 +36,31 @@ void sort_timer_lst::add_timer(util_timer *timer)
         head = timer;
         return;
     }
+    //否则，顺序向后插入
     add_timer(timer, head);
 }
 void sort_timer_lst::adjust_timer(util_timer *timer)
 {
+    //该定时器的时间发生了重置，需要重新排列
     if (!timer)
     {
         return;
     }
     util_timer *tmp = timer->next;
     if (!tmp || (timer->expire < tmp->expire))
-    {
+    {   //如果已经是尾节点了，或者后面的那个依然比自己大，则不需要改动
         return;
     }
     if (timer == head)
     {
+        //如果是头节点，删掉后再尝试添加
         head = head->next;
         head->prev = NULL;
         timer->next = NULL;
         add_timer(timer, head);
     }
     else
-    {
+    {//如果不是也是删了
         timer->prev->next = timer->next;
         timer->next->prev = timer->prev;
         add_timer(timer, timer->next);
@@ -69,7 +73,7 @@ void sort_timer_lst::del_timer(util_timer *timer)
         return;
     }
     if ((timer == head) && (timer == tail))
-    {
+    {//如果只有一个节点
         delete timer;
         head = NULL;
         tail = NULL;
@@ -95,6 +99,7 @@ void sort_timer_lst::del_timer(util_timer *timer)
 }
 void sort_timer_lst::tick()
 {
+    //超时时间到，对所有定时器进行处理
     if (!head)
     {
         return;
@@ -105,14 +110,19 @@ void sort_timer_lst::tick()
     while (tmp)
     {
         if (cur < tmp->expire)
-        {
+        {   //从此节点往后的节点均未超时，不做处理
             break;
         }
+        //超时，回调
         tmp->cb_func(tmp->user_data);
+        //处理下一个
         head = tmp->next;
         if (head)
         {
             head->prev = NULL;
+        }
+        else{//删完了
+            tail = nullptr;
         }
         delete tmp;
         tmp = head;
@@ -121,12 +131,13 @@ void sort_timer_lst::tick()
 
 void sort_timer_lst::add_timer(util_timer *timer, util_timer *lst_head)
 {
+    //lst_head开始插入的节点，在调用前已经认定了了timer->expire >= prev->expire
     util_timer *prev = lst_head;
     util_timer *tmp = prev->next;
     while (tmp)
     {
         if (timer->expire < tmp->expire)
-        {
+        {//找到一个比自己大的，插入到它之前
             prev->next = timer;
             timer->next = tmp;
             tmp->prev = timer;
@@ -136,6 +147,7 @@ void sort_timer_lst::add_timer(util_timer *timer, util_timer *lst_head)
         prev = tmp;
         tmp = tmp->next;
     }
+    //找到最后了都没有比它大的，直接插入尾节点
     if (!tmp)
     {
         prev->next = timer;
@@ -206,7 +218,7 @@ void Utils::timer_handler()
 }
 
 void Utils::show_error(int connfd, const char *info)
-{
+{   //如果连接数大于最大连接数，通知客户端并关闭连接
     send(connfd, info, strlen(info), 0);
     close(connfd);
 }
@@ -217,8 +229,10 @@ int Utils::u_epollfd = 0;
 class Utils;
 void cb_func(client_data *user_data)
 {
+    //连接下树
     epoll_ctl(Utils::u_epollfd, EPOLL_CTL_DEL, user_data->sockfd, 0);
     assert(user_data);
+    //关闭连接
     close(user_data->sockfd);
     http_conn::m_user_count--;
 }

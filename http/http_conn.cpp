@@ -95,7 +95,7 @@ void modfd(int epollfd, int fd, int ev, int TRIGMode)
 }
 
 int http_conn::m_user_count = 0;
-int http_conn::m_epollfd = -1;
+int http_conn::m_epollfd = -1;//在注册监听套接字后被初始化
 
 //关闭连接，关闭一个连接，客户总量减一
 void http_conn::close_conn(bool real_close)
@@ -170,17 +170,17 @@ http_conn::LINE_STATUS http_conn::parse_line()
         if (temp == '\r')
         {
             if ((m_checked_idx + 1) == m_read_idx)
-                return LINE_OPEN;
+                return LINE_OPEN;//没读完退出等下一次读
             else if (m_read_buf[m_checked_idx + 1] == '\n')
             {
                 m_read_buf[m_checked_idx++] = '\0';
                 m_read_buf[m_checked_idx++] = '\0';
-                return LINE_OK;
+                return LINE_OK;//读完一行了，通知主状态机处理这一行
             }
             return LINE_BAD;
         }
         else if (temp == '\n')
-        {
+        {//接着看上一次读到的内容，如果上次读的是\r那么说明这次读的刚好到行尾了，否则是格式错误
             if (m_checked_idx > 1 && m_read_buf[m_checked_idx - 1] == '\r')
             {
                 m_read_buf[m_checked_idx - 1] = '\0';
@@ -196,7 +196,7 @@ http_conn::LINE_STATUS http_conn::parse_line()
 //循环读取客户数据，直到无数据可读或对方关闭连接
 //非阻塞ET工作模式下，需要一次性将数据读完
 bool http_conn::read_once()
-{
+{   //不管是LT还是ET，尽可能多地读到buffer里，并做好标记 m_read_idx，说明读到哪了，如果parse_line发现没读完，那下一次接着读
     if (m_read_idx >= READ_BUFFER_SIZE)
     {
         return false;
@@ -205,15 +205,13 @@ bool http_conn::read_once()
 
     //LT读取数据
     if (0 == m_TRIGMode)
-    {
+    {   
         bytes_read = recv(m_sockfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
-        m_read_idx += bytes_read;
-
         if (bytes_read <= 0)
         {
             return false;
         }
-
+        m_read_idx += bytes_read;
         return true;
     }
     //ET读数据
@@ -241,12 +239,12 @@ bool http_conn::read_once()
 //解析http请求行，获得请求方法，目标url及http版本号
 http_conn::HTTP_CODE http_conn::parse_request_line(char *text)
 {
-    m_url = strpbrk(text, " \t");
+    m_url = strpbrk(text, " \t");//找到第一个空格或tab的位置
     if (!m_url)
     {
         return BAD_REQUEST;
     }
-    *m_url++ = '\0';
+    *m_url++ = '\0';//将这个位置标记，并读取这个位置前面的字符，判断是get还是post
     char *method = text;
     if (strcasecmp(method, "GET") == 0)
         m_method = GET;
@@ -257,18 +255,18 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text)
     }
     else
         return BAD_REQUEST;
-    m_url += strspn(m_url, " \t");
-    m_version = strpbrk(m_url, " \t");
+    m_url += strspn(m_url, " \t");//跳过所有的空格或tab的位置
+    m_version = strpbrk(m_url, " \t");//找到下一个空格或tab的位置
     if (!m_version)
         return BAD_REQUEST;
     *m_version++ = '\0';
     m_version += strspn(m_version, " \t");
-    if (strcasecmp(m_version, "HTTP/1.1") != 0)
+    if (strcasecmp(m_version, "HTTP/1.1") != 0)//分析版本
         return BAD_REQUEST;
     if (strncasecmp(m_url, "http://", 7) == 0)
     {
         m_url += 7;
-        m_url = strchr(m_url, '/');
+        m_url = strchr(m_url, '/');//找到最后一个/的位置
     }
 
     if (strncasecmp(m_url, "https://", 8) == 0)
@@ -282,7 +280,8 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text)
     //当url为/时，显示判断界面
     if (strlen(m_url) == 1)
         strcat(m_url, "judge.html");
-    m_check_state = CHECK_STATE_HEADER;
+    //此时url被处理为一个root下的相对路径
+    m_check_state = CHECK_STATE_HEADER;//准备解析头部
     return NO_REQUEST;
 }
 
@@ -338,7 +337,7 @@ http_conn::HTTP_CODE http_conn::parse_content(char *text)
     }
     return NO_REQUEST;
 }
-
+//主状态机
 http_conn::HTTP_CODE http_conn::process_read()
 {
     LINE_STATUS line_status = LINE_OK;
@@ -347,7 +346,7 @@ http_conn::HTTP_CODE http_conn::process_read()
 
     while ((m_check_state == CHECK_STATE_CONTENT && line_status == LINE_OK) || ((line_status = parse_line()) == LINE_OK))
     {
-        text = get_line();
+        text = get_line();//从状态机通知到读完一行了，取出准备处理
         m_start_line = m_checked_idx;
         LOG_INFO("%s", text);
         switch (m_check_state)
@@ -689,7 +688,7 @@ void http_conn::process()
 {
     HTTP_CODE read_ret = process_read();
     if (read_ret == NO_REQUEST)
-    {
+    {//process返回，没读完，重新注册fd，再等下一次
         modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
         return;
     }

@@ -47,7 +47,7 @@ public:
 };
 
 class connectionRAII{
-
+//用于限制MYSQL连接在作用域内使用，作用域外销毁的类
 public:
 	connectionRAII(MYSQL **con, connection_pool *connPool);
 	~connectionRAII();

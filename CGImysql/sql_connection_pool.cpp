@@ -39,14 +39,13 @@ void connection_pool::init(string url, string User, string PassWord, string DBNa
 
 		if (con == NULL)
 		{
-			LOG_ERROR("MySQL Error");
+			LOG_ERROR("MySQL init Error");
 			exit(1);
 		}
 		con = mysql_real_connect(con, url.c_str(), User.c_str(), PassWord.c_str(), DBName.c_str(), Port, NULL, 0);
-
 		if (con == NULL)
 		{
-			LOG_ERROR("MySQL Error");
+			LOG_ERROR("MySQL connect Error");
 			exit(1);
 		}
 		connList.push_back(con);
@@ -106,7 +105,7 @@ void connection_pool::DestroyPool()
 	lock.lock();
 	if (connList.size() > 0)
 	{
-		list<MYSQL *>::iterator it;
+		list<MYSQL *>::iterator it;//逐个关闭mysql连接
 		for (it = connList.begin(); it != connList.end(); ++it)
 		{
 			MYSQL *con = *it;

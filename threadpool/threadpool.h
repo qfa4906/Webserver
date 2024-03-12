@@ -120,7 +120,7 @@ void threadpool<T>::run()
                 if (request->read_once())
                 {
                     request->improv = 1;
-                    connectionRAII mysqlcon(&request->mysql, m_connPool);
+                    connectionRAII mysqlcon(&request->mysql, m_connPool);//在本块内用完即直接释放mysql链接
                     request->process();
                 }
                 else

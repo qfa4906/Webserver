@@ -41,8 +41,8 @@ public:
 public:
     time_t expire;
     
-    void (* cb_func)(client_data *);
-    client_data *user_data;
+    void (* cb_func)(client_data *);//定时器事件回调函数
+    client_data *user_data;//用户数据
     util_timer *prev;
     util_timer *next;
 };

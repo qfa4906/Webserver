@@ -45,14 +45,14 @@ public:
 
 public:
     //基础
-    int m_port;
-    char *m_root;
-    int m_log_write;
+    int m_port;//端口
+    char *m_root;//网页文件根目录
+    int m_log_write;//0同步
     int m_close_log;
     int m_actormodel;
 
-    int m_pipefd[2];
-    int m_epollfd;
+    int m_pipefd[2];//用于监听定时器事件的文件描述符
+    int m_epollfd;//epoll红黑树根节点描述符
     http_conn *users;
 
     //数据库相关
@@ -69,14 +69,14 @@ public:
     //epoll_event相关
     epoll_event events[MAX_EVENT_NUMBER];
 
-    int m_listenfd;
+    int m_listenfd;//监听socket
     int m_OPT_LINGER;
     int m_TRIGMode;
     int m_LISTENTrigmode;
     int m_CONNTrigmode;
 
     //定时器相关
-    client_data *users_timer;
+    client_data *users_timer;//主要用于和定时器相互绑定，一方面定时器回调函数中需要连接fd才能销毁连接，另一方面webserver中当需要修改定时器时，也可以从中拿取定时器
     Utils utils;
 };
 #endif
